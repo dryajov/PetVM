@@ -1,0 +1,126 @@
+%{
+use PetVM qw(%opcodes);
+use PetVM::PetLexer;
+use Data::Dumper;
+%}
+
+%%
+
+program: # empty
+        | program expr
+        | error { $_[0]->YYErrok }
+;
+
+expr:       OP                  {
+                                    push @{$_[0]->{YYDATA}->{opcodes}}, 
+                                    [$opcodes{$_[0]->get_opcode_from_keyword($_[1])}];
+                                    
+                                    return $_[1];
+                                }
+            |OP_PUSH arg_num    {
+                                    push @{$_[0]->{YYDATA}->{opcodes}}, 
+                                    [$opcodes{$_[0]->get_opcode_from_keyword($_[1])}, [$_[2]]];
+                                    
+                                    return ($_[1], $_[2]);
+                                }
+            |OP_PUSH arg_string {
+                                    push @{$_[0]->{YYDATA}->{opcodes}}, 
+                                    [$opcodes{$_[0]->get_opcode_from_keyword($_[1])}, ["$_[2]"]];
+                                    
+                                    return ($_[1], $_[2]);
+                                }
+            |OP_JMP LABEL_REF   {
+                                    # verify that there is a valid jump point
+                                    exists $_[0]->{YYDATA}->{labels}->{$_[2]} or do {
+                                        $_[0]->YYData->{ERRMSG} = "Invalid jump point!\n";
+                                        $_[0]->YYError;
+                                        return undef;
+                                    };
+                                    
+                                    # get the jump point
+                                    my $jmp_pt = $_[0]->{YYDATA}->{labels}->{$_[2]};
+                                    
+                                    # push it on the opcodes stack
+                                    push @{$_[0]->{YYDATA}->{opcodes}}, [$opcodes{'OP_PUSH'}, [$jmp_pt]];
+                                    
+                                    # then we push the jump instruction on the stack as well
+                                    push @{$_[0]->{YYDATA}->{opcodes}}, [$opcodes{$_[0]->get_opcode_from_keyword($_[1])}];
+                                    
+                                    return ($_[1], $_[2]);
+                                }
+            |LABEL              {
+                                    # make the label point one position beyond 
+                                    # in the instruction array last instruction.
+                                    # we need this because the next instruction 
+                                    # is going to be the jump to location
+                                    $_[0]->{YYDATA}->{labels}->{$_[1]} = $#{$_[0]->{YYDATA}->{opcodes}}+1;
+                                    
+                                    return ($_[1]);                            
+                                }
+
+;
+
+arg_num:    NUMBER
+;
+
+arg_string: STRING
+;
+  
+%%
+
+sub get_opcode_from_keyword {
+    my $self    = shift;
+    my $keyword = shift;
+    
+    return "OP_$keyword";
+}
+
+sub _error {
+
+    exists $_[0]->YYData->{ERRMSG}
+    and do {
+        print $_[0]->YYData->{ERRMSG}, "\n";
+        return $_[0]->YYData->{ERRMSG};
+    };
+        
+    die "Syntax error.\n";
+}
+
+sub _lexer {
+    my ($self) = @_;
+    
+    my ($label, $value) = $self->{YYDATA}->{lexer}->token;
+    
+    return ($label, $value);
+}
+
+sub init {
+    my $self = shift;
+
+    # create the lexer
+    my $lexer = new PetVM::PetLexer;
+    $lexer->from(@_);
+    $self->{YYDATA}->{lexer} = $lexer;
+    
+    $self->{YYDATA}->{opcodes}  = []; # opcodes array
+    $self->{YYDATA}->{labels}   = {}; # labels hash - holds references to opcodes    
+    
+    return;
+}
+
+sub parse {
+    my $self = shift;
+    my $file = shift;
+    
+    $self->init($file);
+    
+    $self->YYParse( yylex => \&_lexer, yyerror => \&_error, yydebug => 0x0 );
+    
+    return;
+}
+
+sub get_opcodes {
+    my $self = shift;
+    
+    return $self->{YYDATA}->{opcodes};
+}

@@ -1,0 +1,28 @@
+---
+abstract: 'The Perl experimental and toy VM'
+author:
+  - 'Dmitriy Ryajov <dryajov@gmail.com>'
+build_requires:
+  Test::More: 0
+dynamic_config: 0
+generated_by: 'Module::Build version 0.38, CPAN::Meta::Converter version 2.113640'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: PetVM
+provides:
+  PetVM:
+    file: lib/PetVM.pm
+    version: 0.01
+  PetVM::PetLexer:
+    file: lib/PetVM/PetLexer.pm
+    version: 0.01
+  PetVM::PetParser:
+    file: lib/PetVM/PetParser.pm
+    version: 0
+requires:
+  perl: 5.006
+resources:
+  license: http://dev.perl.org/licenses/
+version: 0.01

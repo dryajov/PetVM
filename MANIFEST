@@ -1,0 +1,12 @@
+Build.PL
+Changes
+lib/PetVM.pm
+lib/PetVM/PetLexer.pm
+lib/PetVM/PetGrammar.yp
+lib/PetVM/PetParser.pm
+MANIFEST			This list of files
+README
+t/00-load.t
+t/manifest.t
+t/pod-coverage.t
+t/pod.t
