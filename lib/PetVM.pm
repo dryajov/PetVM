@@ -1,25 +1,5 @@
 package PetVM;
 
-=pod
-
-=head1 NAME
-
-PetVM - The Perl experimental and toy VM
-
-=head1 SYNOPSIS
-
-  my $object = PetVM->new(
-  );
-  $object->dummy;
-
-=head1 DESCRIPTION
-
-The author was too lazy to write a description.
-
-=head1 METHODS
-
-=cut
-
 use 5.010;
 use strict;
 use warnings;
@@ -34,44 +14,6 @@ use Scalar::Util;
 
 our $VERSION = '0.01';
 
-=pod
-
-=head1 OPCODES
-
-ADD     0
-SUBST   1
-DIV     2
-MUL     3
-MOD     4
-
-SHL     5
-SHR     6
-AND     7
-OR      8
-COMP    9
-XOR     10
-
-JMP     11
-JMPEQ   12
-JMPNEQ  13
-JMPGT   14
-JMPLT   15
-
-PUSH    16
-POP     17
-
-CALL    18
-RET     19
-
-OUT     20
-IN      21
-
-STORE   22
-LOAD    23
-CLS     24
-
-=cut
-
 use Exporter;
 use base qw/Exporter/;
 
@@ -84,8 +26,9 @@ BEGIN {
 
 	our %opcodes;    # holds a map of opcode name to opcode id
 
-	@EXPORT_OK = qw(%opcodes)
-	  ; # exported by default, all parsers should use this to create the executable
+	# exported by default, all parsers should
+	# use this to create the executable
+	@EXPORT_OK = qw(%opcodes);
 
 	%EXPORT_TAGS = (
 		OPCODES => [
@@ -120,30 +63,22 @@ BEGIN {
 	# export the opcodes
 	map { push @EXPORT_OK, $_; } @{ $EXPORT_TAGS{OPCODES} };
 
-	no strict 'refs';
-	no strict 'subs';
+	{
 
-	# I whish perl had real enums...
-	my $const_cnt = 0;
-	map {
-		*{$_} = sub { $const_cnt++ };    # create constants using subs
-		$opcodes{$_} = &{$_};            # map into the opcode hash
-	} @{ $EXPORT_TAGS{OPCODES} };
+		# this is silly but necesary
+		# we need this to create sub
+		# based constants
+		no strict 'refs';
+		no strict 'subs';
+
+		# I whish perl had real enums...
+		my $const_cnt = 0;
+		map {
+			*{$_} = sub { $const_cnt++ };    # create constants using subs
+			$opcodes{$_} = &{$_};            # map into the opcode hash
+		} @{ $EXPORT_TAGS{OPCODES} };
+	}
 }
-
-=pod
-
-=head2 new
-
-  my $object = PetVM->new();
-
-The C<new> constructor lets you create a new B<PetVM> object.
-
-So no big surprises there...
-
-Returns a new B<PetVM> or dies on error.
-
-=cut
 
 # array of instructions
 # each entry contains a reference to another array
@@ -191,7 +126,7 @@ has 'heap' => (
 				init_arg => undef,
 );
 
-# build the heap
+# build the heap - 256 possible memory locations
 sub _init_heap {
 	my @heap;
 
@@ -224,14 +159,6 @@ sub _build_routines {
 			 \&OUT,   \&IN,    \&STORE, \&LOAD,   \&CLS,
 	];
 }
-
-=pod
-
-=head2 eval
-
-This method does something... apparently.
-    
-=cut
 
 sub move_next {
 	my $self = shift;
@@ -695,7 +622,7 @@ sub STORE {
 	my $self = shift;
 
 	my $addr = $self->POP;
-	my $val  = $self->_peek; # don't remove from stack
+	my $val  = $self->_peek;    # don't remove from stack
 
 	$self->_trace("Address out of bounds!") if $addr > 255;
 
@@ -722,14 +649,125 @@ __PACKAGE__->meta->make_immutable;
 
 1;
 
+__END__
+
 =pod
 
+=head1 NAME
+
+PetVM - Perl experimental and toy VM
+
+=head1 SYNOPSIS
+    
+ use strict;
+ use warnings;
+
+ use PetVM::PetParser;
+ use IO::Scalar;
+ use Data::Dumper;
+
+ # buffer to hold the parsed syntax
+ my $buf;
+
+ # test PUSH numeric
+ $buf = << 'EOF';
+
+ // init counter
+ PUSH    1000
+ PUSH    0
+ STORE           // store away the initial counter
+
+ // loop untill 0
+ LOOP:
+     PUSH    1
+     SUBST                               // n - 1
+     PUSH    0
+     STORE                               // put result in address 0
+     PUSH   "\n"
+     PUSH    0                           
+     LOAD                                // load value from address 0 on to the stack
+     PUSH    "VALUE IS: "                // put string on stack
+     OUT
+     OUT
+     OUT
+     PUSH    0                           
+     LOAD                                // load value from address 0 on to the stack
+     PUSH    0                           // push value to compare to
+ JMPNEQ   [LOOP]
+
+ EOF
+
+ # create a new parser
+ my $parser = PetVM::PetParser->new;
+
+ $parser->parse( IO::Scalar->new( \$buf ) );
+
+ my $instructions = $parser->get_opcodes();
+
+ my $pet = PetVM->new( instructions => $instructions );
+ $pet->run();
+
+=head1 DESCRIPTION
+
+The aim of PetVM is to create a simple stack based virtual machine,
+mostly for demostration purposes.
+
+=head1 OPCODES
+
+ ADD     0
+ SUBST   1
+ DIV     2
+ MUL     3
+ MOD     4
+
+ SHL     5
+ SHR     6
+ AND     7
+ OR      8
+ COMP    9
+ XOR     10
+
+ JMP     11
+ JMPEQ   12
+ JMPNEQ  13
+ JMPGT   14
+ JMPLT   15
+
+ PUSH    16
+ POP     17
+
+ CALL    18
+ RET     19
+
+ OUT     20
+ IN      21
+
+ STORE   22
+ LOAD    23
+ CLS     24
+
+=head1 METHODS
+
+=head2 new
+
+my $pet = PetVM->new( instructions => [...] );
+
+The C<new> constructor lets you create a new B<PetVM> object.
+
+Returns a new B<PetVM> object or dies on error.
+
+=head2 run
+
+$pet->run;
+
+The C<run> method executes a previosly created B<PetVM> object.
+    
 =head1 SUPPORT
 
-No support is available
+This module is free software. No warranty of any kind is provided.
 
 =head1 AUTHOR
 
-Copyright 2011 Anonymous.
+Dmitriy Ryajov <dryajov@gmail.com>
 
 =cut

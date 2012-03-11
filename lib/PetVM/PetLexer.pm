@@ -4,252 +4,177 @@ use 5.006;
 use strict;
 use warnings;
 
-=head1 NAME
-
-PetVM::PetLexer - The great new PetVM::PetLexer!
-
-=head1 VERSION
-
-Version 0.01
-
-=cut
-
 our $VERSION = '0.01';
 
 use Lexer::Lex;
 
 use strict;
 
-sub _print {
-	my $lex = shift;
-	print "LABEL: ", $lex->last()->label, " - ";
-	print $lex->last()->content, "\n";
-
-	return;
-}
-
 sub new {
-	my $class = shift;
-	my $self  = {};
+    my $class = shift;
+    my $self  = {};
 
-	bless $self, $class;
+    bless $self, $class;
 
-	my $lex = $self->init_lexer();
-	$self->{lexer} = $lex;
+    my $lex = $self->init_lexer();
+    $self->{lexer} = $lex;
 
-	return $self;
+    return $self;
 }
 
 sub lexer {
-	my $self = shift;
+    my $self = shift;
 
-	return $self->{lexer};
+    return $self->{lexer};
 }
 
 sub init_lexer {
 
-	# OPCODES
-	my $opcodes =  qr/ADD|SUBST|DIV|MUL|MOD|SHL|SHR|AND|OR|
-	                   COMP|XOR|POP|CALL|RET|OUT|IN|STORE|LOAD/xo;
-	                   
+    # no arg opcodes
+    my $opcodes = qr/ADD|SUBST|DIV|MUL|MOD|SHL|SHR|AND|OR|
+                       COMP|XOR|POP|CALL|RET|OUT|IN|STORE|LOAD/xo;
+
+	# jump opcodes need a label
     my $jmp_opcodes = qr/JMPEQ|JMPNEQ|JMPGT|JMPLT|JMP/xo;
 
-	# Match strings
-	my $string = qr{
+    # Match strings
+    my $string = qr{
                   ".*"  # match anything within ""
                }xom;
 
-	# Match numbers
-	my $number = qr{
+    # Match numbers
+    my $number = qr{
                   \d+  # match a number
                }xom;
 
-	# match comments
-	my $comments = qr{//*.+}ox;
+    # match comments
+    my $comments = qr{//*.+}ox;
 
     # these are ignored
     my $ignored = qr{^[\s|\n]+?}ox;
 
-	my @tokens = (
-		[
-		  'OP',
-		  qr/$opcodes+/x,
-		],
+    my @tokens = (
+        [ 'OP',      qr/$opcodes+/x, ],
+        [ 'OP_PUSH', qr/PUSH/x, ],
+        [ 'OP_JMP',  qr/$jmp_opcodes/x, ],
         [
-          'OP_PUSH',
-          qr/PUSH/x,
+           'STRING',
+           qr/$string/x,
+           sub {
+               my $lex     = shift;
+               my $content = $lex->last()->content;
+               $content =~ s/\"//g; # strip double quotes from the text
+               $lex->last()->content($content);
+             }
+        ],
+        [ 'NUMBER', qr/$number/x, ],
+        [
+           'LABEL',
+           qr/\w+:/x,
+           sub {
+               my $lex     = shift;
+               my $content = $lex->last()->content;
+               $content =~ s/:$//g; # strip ":" from the end
+               $lex->last()->content($content);
+             }
         ],
         [
-          'OP_JMP',
-          qr/$jmp_opcodes/x,
+           'LABEL_REF',
+           qr/\[\w+\]/x,
+           sub {
+               my $lex     = shift;
+               my $content = $lex->last()->content;
+               $content =~ s/\[(.*)\]/$1/g;    # strip [], we don't need that
+               $lex->last()->content($content);
+             }
         ],
-		[
-		  'STRING',
-		  qr/$string/x,
-          sub {
-            my $lex = shift;
-            my $content = $lex->last()->content;
-            $content =~ s/\"//g;
-            $lex->last()->content($content);
-          } 		  
-		],
-		[
-		  'NUMBER',
-		  qr/$number/x,
-		],
-		[
-		  'LABEL',
-		  qr/\w+:/x,
-          sub {
-            my $lex = shift;
-            my $content = $lex->last()->content;
-            $content =~ s/:$//g;
-            $lex->last()->content($content);
-          }		  
-		],
-		[
-		  'LABEL_REF',
-		  qr/\[\w+\]/x,
-		  sub {
-		  	my $lex = shift;
-		  	my $content = $lex->last()->content;
-		  	$content =~ s/\[(.*)\]/$1/g; # strip [], we don't need that
-		  	$lex->last()->content($content);
-		  }
-		],
-		[ 'IGNORE', qr/$ignored/x, undef, 1 ],
-		[ 'COMMENTS', qr/$comments/x, undef, 1 ],
-	);
+        [ 'IGNORE',   qr/$ignored/x,  undef, 1 ],
+        [ 'COMMENTS', qr/$comments/x, undef, 1 ],
+    );
 
-	my $lexer = Lexer::Lex->new(
-		\@tokens,
-		sub {
-			my $lex = shift;
-			my $tok = $lex->{_unmatch};
-			print $tok->label,   "\n";
-			print $tok->content, "\n";
-			die "Unable to parse line, " . $lex->get_line . "!\n";
-		},
-		"\n"
-	);
+    my $lexer = Lexer::Lex->new(
+        \@tokens,
+        sub {
+            my $lex = shift;
+            my $tok = $lex->{_unmatch};
+            print $tok->label,   "\n";
+            print $tok->content, "\n";
+            die "Unable to parse line, " . $lex->get_line . "!\n";
+        },
+        "\n"
+    );
 
-	return $lexer;
+    return $lexer;
 }
 
+# Return next token if next 
+# token is EOF then we return 
+# an empty string and an undef to
+# signal EOF to YAPP
 sub token {
-	my $self = shift;
+    my $self = shift;
 
     my $token = $self->lexer->token;
-    my ($label, $content) = ( $token->label, $token->content ); 
+    my ( $label, $content ) = ( $token->label, $token->content );
 
-    if ($label eq 'EOF') {
-    	($label, $content) = ('', undef);
-    } elsif ($label eq 'NEWLINE') {
-    	($label) = '';
+    if ( $label eq 'EOF' ) {
+        ( $label, $content ) = ( '', undef );
+    } elsif ( $label eq 'NEWLINE' ) {
+        ($label) = '';
     }
 
-	return ($label, $content);
+    return ( $label, $content );
 }
 
+# simple wrapper for Lexer::Lex from method
 sub from {
-	my ( $self, $file ) = @_;
-	$self->lexer->from($file);
-	return;
+    my ( $self, $file ) = @_;
+    $self->lexer->from($file);
+    return;
 }
 
 1;
 
 __END__
 
+=head1 NAME
+
+B<PetVM> lexer definition.
+
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+ use PetVM::PetLexer;
 
-Perhaps a little code snippet.
+ my $lexer = PetVM::PetLexer->new;
+ $lexer->from( IO::Scalar->new( \$buf ) );
+ my ($label, $conent) = $lexer->token;
 
-    use PetVM::PetLexer;
+=head1 DESCRIPTION
 
-    my $foo = PetVM::PetLexer->new();
-    ...
+This is the B<Lexer::Lex> based parser module for B<PetVM>. It is capable of tokenizing a B<PetVM> assembly definition.
 
-=head1 EXPORT
+=head1 METHODS
 
-A list of functions that can be exported.  You can delete this section
-if you don' t export anything, such as for a purely object-oriented module .
+=head2 new
 
-=head1 SUBROUTINES/METHODS
+my $parser = PetVM::PetParser->new;
 
-=head2 function1
+The C<new> method creates a new B<PetVM::PetLexer> object.
 
-=cut
+=head2 from( $file_handle )
 
-			 sub function1 {
-		   }
+$lexer->from( IO::Scalar->new( \$buf ) );
 
-=head2 function2
+The C<parse> method parses B<PetVM> assembly code. It expects a valid file handle as a parameter.
 
-=cut
+=head2 toke
 
-		   sub function2 {
-		   }
+$lexer->token;
+
+The C<token> returns the current token. When called it will return a list of two elements, a label and the content of the token. If the end of the input is reached, then an empty label and an undef content will be returned. This is used by B<Parse::Yapp> derived B<PetVM::PetParser> to identify an EOF.
 
 =head1 AUTHOR
 
-Dmitriy Ryajov, C<< <dryajov at gmail.com> >>
-
-=head1 BUGS
-
-Please report any bugs or feature requests to C<bug-petvm at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=PetVM>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
-
-
-
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc PetVM::PetLexer
-
-
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker (report bugs here)
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=PetVM>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/PetVM>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/PetVM>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/PetVM/>
-
-=back
-
-
-=head1 ACKNOWLEDGEMENTS
-
-
-=head1 LICENSE AND COPYRIGHT
-
-Copyright 2012 Dmitriy Ryajov.
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See http://dev.perl.org/licenses/ for more information.
-
+Dmitriy Ryajov, <dryajov@gmail.com> 
 
 =cut
-
-		   1;    # End of PetVM::PetLexer

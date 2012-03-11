@@ -13,19 +13,19 @@ program: # empty
 
 expr:       OP                  {
                                     push @{$_[0]->{YYDATA}->{opcodes}}, 
-                                    [$opcodes{$_[0]->get_opcode_from_keyword($_[1])}];
+                                    [$opcodes{$_[0]->_get_opcode_from_keyword($_[1])}];
                                     
                                     return $_[1];
                                 }
             |OP_PUSH arg_num    {
                                     push @{$_[0]->{YYDATA}->{opcodes}}, 
-                                    [$opcodes{$_[0]->get_opcode_from_keyword($_[1])}, [$_[2]]];
+                                    [$opcodes{$_[0]->_get_opcode_from_keyword($_[1])}, [$_[2]]];
                                     
                                     return ($_[1], $_[2]);
                                 }
             |OP_PUSH arg_string {
                                     push @{$_[0]->{YYDATA}->{opcodes}}, 
-                                    [$opcodes{$_[0]->get_opcode_from_keyword($_[1])}, ["$_[2]"]];
+                                    [$opcodes{$_[0]->_get_opcode_from_keyword($_[1])}, ["$_[2]"]];
                                     
                                     return ($_[1], $_[2]);
                                 }
@@ -44,7 +44,7 @@ expr:       OP                  {
                                     push @{$_[0]->{YYDATA}->{opcodes}}, [$opcodes{'OP_PUSH'}, [$jmp_pt]];
                                     
                                     # then we push the jump instruction on the stack as well
-                                    push @{$_[0]->{YYDATA}->{opcodes}}, [$opcodes{$_[0]->get_opcode_from_keyword($_[1])}];
+                                    push @{$_[0]->{YYDATA}->{opcodes}}, [$opcodes{$_[0]->_get_opcode_from_keyword($_[1])}];
                                     
                                     return ($_[1], $_[2]);
                                 }
@@ -60,15 +60,18 @@ expr:       OP                  {
 
 ;
 
+# argument number definition
 arg_num:    NUMBER
 ;
 
+# argument string definition
 arg_string: STRING
 ;
   
 %%
 
-sub get_opcode_from_keyword {
+# convert a keyword to a valid opcode number
+sub _get_opcode_from_keyword {
     my $self    = shift;
     my $keyword = shift;
     
@@ -94,7 +97,9 @@ sub _lexer {
     return ($label, $value);
 }
 
-sub init {
+# init the parser
+# expects a valid file handle
+sub _init {
     my $self = shift;
 
     # create the lexer
@@ -108,19 +113,68 @@ sub init {
     return;
 }
 
+# parses PetVM assembly language
 sub parse {
     my $self = shift;
     my $file = shift;
     
-    $self->init($file);
+    $self->_init($file);
     
     $self->YYParse( yylex => \&_lexer, yyerror => \&_error, yydebug => 0x0 );
     
     return;
 }
 
+# returns an array ref of opcodes
 sub get_opcodes {
     my $self = shift;
     
     return $self->{YYDATA}->{opcodes};
 }
+
+__END__
+
+=head1 NAME
+
+B<PetVM> parser definition.
+
+=head1 SYNOPSIS
+
+ use PetVM::PetParser;
+
+ my $parser = PetVM::PetParser->new;
+ 
+ $parser->parse( IO::Scalar->new( \$buf ) );
+ 
+ my $instructions = $parser->get_opcodes();
+
+=head1 DESCRIPTION
+
+This is the Parse::Yapp based parser module for B<PetVM>. For the grammar definition please refer to PetGrammar.yp.
+
+=head1 METHODS
+
+=head2 new
+
+my $parser = PetVM::PetParser->new;
+
+The C<new> method creates a new B<PetVM::PetParser> object.
+
+=head2 parse
+
+$parser->parse( IO::Scalar->new( \$buf ) );
+
+The C<parse> method parses B<PetVM> assembly code. It expects a valid file handle as a parameter.
+
+=head2 get_opcodes
+
+$parser->get_opcodes;
+
+The C<get_opcodes> returns an array ref of valid opcodes that B<PetVM> understands.
+
+=head1 AUTHOR
+
+Dmitriy Ryajov, <dryajov@gmail.com> 
+
+=cut
+
