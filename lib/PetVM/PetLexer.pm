@@ -16,7 +16,7 @@ sub new {
 
     bless $self, $class;
 
-    my $lex = $self->init_lexer();
+    my $lex = $self->_init_lexer();
     $self->{lexer} = $lex;
 
     return $self;
@@ -28,30 +28,30 @@ sub lexer {
     return $self->{lexer};
 }
 
-sub init_lexer {
+sub _init_lexer {
 
-    # no arg opcodes
-    my $opcodes = qr/ADD|SUBST|DIV|MUL|MOD|SHL|SHR|AND|OR|
-                       COMP|XOR|POP|CALL|RET|OUT|IN|STORE|LOAD/xo;
+	# no arg opcodes
+	my $opcodes = qr/ADD|SUBST|DIV|MUL|MOD|SHL|SHR|AND|OR|
+					   COMP|XOR|POP|CALL|RET|OUT|IN|STORE|LOAD|CLS/xo;
 
 	# jump opcodes need a label
-    my $jmp_opcodes = qr/JMPEQ|JMPNEQ|JMPGT|JMPLT|JMP/xo;
+	my $jmp_opcodes = qr/JMPEQ|JMPNEQ|JMPGT|JMPLT|JMP/xo;
 
-    # Match strings
-    my $string = qr{
-                  ".*"  # match anything within ""
-               }xom;
+	# Match strings
+	my $string = qr{
+				  ".*"  # match anything within ""
+			   }xom;
 
-    # Match numbers
-    my $number = qr{
-                  \d+  # match a number
-               }xom;
+	# Match numbers
+	my $number = qr{
+				  \d+  # match a number
+			   }xom;
 
-    # match comments
-    my $comments = qr{//*.+}ox;
+	# match comments
+	my $comments = qr{//*.+}ox;
 
-    # these are ignored
-    my $ignored = qr{^[\s|\n]+?}ox;
+	# these are ignored
+	my $ignored = qr{^[\s|\n]+?}ox;
 
     my @tokens = (
         [ 'OP',      qr/$opcodes+/x, ],
@@ -139,7 +139,7 @@ __END__
 
 =head1 NAME
 
-B<PetVM> lexer definition.
+PetLexer - The B<PetVM> lexer.
 
 =head1 SYNOPSIS
 
@@ -171,7 +171,7 @@ The C<parse> method parses B<PetVM> assembly code. It expects a valid file handl
 
 $lexer->token;
 
-The C<token> returns the current token. When called it will return a list of two elements, a label and the content of the token. If the end of the input is reached, then an empty label and an undef content will be returned. This is used by B<Parse::Yapp> derived B<PetVM::PetParser> to identify an EOF.
+The C<token> method returns the current token. When called, it will return a list of two elements, a label and the content of the token. If the end of the input is reached, then an empty label and an undef content will be returned. This is used by the B<Parse::Yapp> derived B<PetVM::PetParser> to identify an EOF.
 
 =head1 AUTHOR
 
