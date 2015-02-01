@@ -87,43 +87,43 @@ BEGIN {
 # where OP is the opcode code and the array ref is an
 # (optional) array of parameters passed to the instruction
 has 'instructions' => (
-						isa      => 'ArrayRef[ArrayRef]',
-						is       => 'rw',
-						required => 1
+	isa      => 'ArrayRef[ArrayRef]',
+	is       => 'rw',
+	required => 1
 );
 
 # current instruction pointer
 # (offset into instructions)
 has 'ip' => (
-			  isa      => 'Num',
-			  is       => 'rw',
-			  default  => 0,
-			  init_arg => undef,
+	isa      => 'Num',
+	is       => 'rw',
+	default  => 0,
+	init_arg => undef,
 );
 
 # the execution stack
 has 'stack' => (
-				 isa      => 'ArrayRef',
-				 is       => 'rw',
-				 default  => sub { [] },
-				 init_arg => undef,
+	isa      => 'ArrayRef',
+	is       => 'rw',
+	default  => sub { [] },
+	init_arg => undef,
 );
 
 # speciall stack used for subrutine
 # call return addresses
 has 'address_stack' => (
-						 isa      => 'ArrayRef',
-						 is       => 'rw',
-						 default  => sub { [] },
-						 init_arg => undef
+	isa      => 'ArrayRef',
+	is       => 'rw',
+	default  => sub { [] },
+	init_arg => undef
 );
 
 # a pseudo heap
 has 'heap' => (
-				isa      => 'ArrayRef[ArrayRef]',
-				is       => 'rw',
-				builder  => '_init_heap',
-				init_arg => undef,
+	isa      => 'ArrayRef[ArrayRef]',
+	is       => 'rw',
+	builder  => '_init_heap',
+	init_arg => undef,
 );
 
 # build the heap - 256 possible memory locations
@@ -658,7 +658,7 @@ __END__
 PetVM - Perl experimental and toy VM
 
 =head1 SYNOPSIS
-    
+
  use strict;
  use warnings;
 
@@ -684,13 +684,13 @@ PetVM - Perl experimental and toy VM
      PUSH    0
      STORE                               // put result in address 0
      PUSH   "\n"
-     PUSH    0                           
+     PUSH    0
      LOAD                                // load value from address 0 on to the stack
      PUSH    "VALUE IS: "                // put string on stack
      OUT
      OUT
      OUT
-     PUSH    0                           
+     PUSH    0
      LOAD                                // load value from address 0 on to the stack
      PUSH    0                           // push value to compare to
  JMPNEQ   [LOOP]
@@ -761,7 +761,7 @@ Returns a new B<PetVM> object or dies on error.
 $pet->run;
 
 The C<run> method executes a previosly created B<PetVM> object.
-    
+
 =head1 SUPPORT
 
 This module is free software. No warranty of any kind is provided.
