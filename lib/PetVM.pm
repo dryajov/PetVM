@@ -143,20 +143,20 @@ sub _init_heap {
 
 # a map of OP codes to internal subrutines
 has 'routines' => (
-					isa      => 'ArrayRef[CodeRef]',
-					is       => 'ro',
-					builder  => '_build_routines',
-					init_arg => undef,
+	isa      => 'ArrayRef[CodeRef]',
+	is       => 'ro',
+	builder  => '_build_routines',
+	init_arg => undef,
 );
 
 # build the rutines
 sub _build_routines {
 	return [
-			 \&ADD,   \&SUBST, \&DIV,   \&MUL,    \&MOD,
-			 \&SHL,   \&SHR,   \&AND,   \&OR,     \&COMP,
-			 \&XOR,   \&JMP,   \&JMPEQ, \&JMPNEQ, \&JMPGT,
-			 \&JMPLT, \&PUSH,  \&POP,   \&CALL,   \&RET,
-			 \&OUT,   \&IN,    \&STORE, \&LOAD,   \&CLS,
+			\&ADD,   \&SUBST, \&DIV,   \&MUL,    \&MOD,
+			\&SHL,   \&SHR,   \&AND,   \&OR,     \&COMP,
+			\&XOR,   \&JMP,   \&JMPEQ, \&JMPNEQ, \&JMPGT,
+			\&JMPLT, \&PUSH,  \&POP,   \&CALL,   \&RET,
+			\&OUT,   \&IN,    \&STORE, \&LOAD,   \&CLS,
 	];
 }
 
